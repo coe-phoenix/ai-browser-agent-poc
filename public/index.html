@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Browser Agent - POC Demo</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --text: #e4e4ef;
+      --text-dim: #8888a0;
+      --accent: #6366f1;
+      --accent-glow: rgba(99,102,241,0.3);
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header .logo {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700;
+    }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header .badge {
+      background: var(--accent-glow);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      height: calc(100vh - 77px);
+    }
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-section {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .task-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .task-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .task-input::placeholder { color: var(--text-dim); }
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .preset-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--text); }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 16px;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-stop { background: var(--red); }
+    .log-container { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .log-entry {
+      display: flex; gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .log-step {
+      background: var(--surface2); border-radius: 6px; padding: 2px 8px;
+      font-size: 11px; color: var(--text-dim); white-space: nowrap; height: fit-content;
+    }
+    .log-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .log-text { color: var(--text-dim); line-height: 1.5; }
+    .log-thought { color: var(--accent); font-style: italic; margin-bottom: 4px; }
+    .log-action { color: var(--text); }
+    .browser-view { background: var(--surface); display: flex; flex-direction: column; }
+    .browser-toolbar {
+      padding: 12px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .browser-dots { display: flex; gap: 6px; }
+    .browser-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+    .browser-dots span:nth-child(1) { background: var(--red); }
+    .browser-dots span:nth-child(2) { background: var(--orange); }
+    .browser-dots span:nth-child(3) { background: var(--green); }
+    .url-bar {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 14px; color: var(--text-dim);
+      font-size: 13px; font-family: 'SF Mono', monospace;
+    }
+    .browser-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+    .status-dot.active {
+      background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+    .screenshot-container {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 20px; overflow: hidden;
+    }
+    .screenshot-container img {
+      max-width: 100%; max-height: 100%; border-radius: 8px;
+      border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .placeholder { text-align: center; color: var(--text-dim); }
+    .placeholder .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .placeholder p { font-size: 14px; }
+    .how-it-works { padding: 20px 24px; border-top: 1px solid var(--border); }
+    .how-it-works h3 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-dim); margin-bottom: 12px;
+    }
+    .step-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-item { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-dim); }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--surface2);
+      border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 600; flex-shrink: 0;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">A</div>
+    <h1>AI Browser Agent</h1>
+    <span class="badge">POC DEMO</span>
+  </div>
+  <div class="container">
+    <div class="panel">
+      <div class="panel-section">
+        <h3>Task</h3>
+        <textarea class="task-input" id="taskInput" placeholder="Describe what you want the AI agent to do...&#10;&#10;e.g. Go to instagram.com and log in with username demo@example.com and password test123"></textarea>
+        <div class="presets">
+          <button class="preset-btn" onclick="setPreset('Go to instagram.com and log in with username demo@test.com and password MyPass123')">Instagram Login</button>
+          <button class="preset-btn" onclick="setPreset('Go to google.com and search for AI browser automation 2026')">Google Search</button>
+          <button class="preset-btn" onclick="setPreset('Go to github.com and navigate to the trending repositories page')">GitHub Trending</button>
+          <button class="preset-btn" onclick="setPreset('Go to wikipedia.org and search for Artificial Intelligence and summarize the first paragraph')">Wikipedia Search</button>
+        </div>
+        <button class="btn-primary" id="startBtn" onclick="startAgent()">Launch Agent</button>
+      </div>
+      <div class="panel-section" style="flex-shrink:0;"><h3>Activity Log</h3></div>
+      <div class="log-container" id="logContainer">
+        <div class="log-entry">
+          <span class="log-icon">-</span>
+          <span class="log-text">Ready. Enter a task and click Launch Agent.</span>
+        </div>
+      </div>
+      <div class="how-it-works">
+        <h3>How It Works</h3>
+        <div class="step-list">
+          <div class="step-item"><span class="step-num">1</span> Agent launches a headless browser</div>
+          <div class="step-item"><span class="step-num">2</span> Takes a screenshot of the current page</div>
+          <div class="step-item"><span class="step-num">3</span> Claude Vision analyzes the screenshot</div>
+          <div class="step-item"><span class="step-num">4</span> AI decides the next action (click, type, etc.)</div>
+          <div class="step-item"><span class="step-num">5</span> Executes the action and repeats</div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-view">
+      <div class="browser-toolbar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="url-bar" id="urlBar">about:blank</div>
+        <div class="browser-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Idle</span>
+        </div>
+      </div>
+      <div class="screenshot-container" id="screenshotContainer">
+        <div class="placeholder">
+          <div class="icon">&#128301;</div>
+          <p>Browser view will appear here once the agent starts</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let currentSessionId = null;
+    let eventSource = null;
+    function setPreset(text) { document.getElementById('taskInput').value = text; }
+    function addLog(icon, html, step) {
+      const container = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `${step > 0 ? `<span class="log-step">Step ${step}</span>` : ''}<span class="log-icon">${icon}</span><span class="log-text">${html}</span>`;
+      container.prepend(entry);
+    }
+    async function startAgent() {
+      const task = document.getElementById('taskInput').value.trim();
+      if (!task) return;
+      const btn = document.getElementById('startBtn');
+      if (currentSessionId) {
+        await fetch(`/api/agent/stop/${currentSessionId}`, { method: 'POST' });
+        cleanup(); return;
+      }
+      btn.textContent = 'Stop Agent';
+      btn.classList.add('btn-stop');
+      document.getElementById('statusDot').classList.add('active');
+      document.getElementById('statusText').textContent = 'Running';
+      document.getElementById('logContainer').innerHTML = '';
+      try {
+        const res = await fetch('/api/agent/start', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task }),
+        });
+        const data = await res.json();
+        currentSessionId = data.sessionId;
+        eventSource = new EventSource(`/api/stream/${currentSessionId}`);
+        eventSource.addEventListener('screenshot', (e) => {
+          const d = JSON.parse(e.data);
+          document.getElementById('screenshotContainer').innerHTML = `<img src="data:image/png;base64,${d.image}" alt="Browser screenshot">`;
+          document.getElementById('urlBar').textContent = d.url || 'about:blank';
+        });
+        eventSource.addEventListener('status', (e) => {
+          const d = JSON.parse(e.data);
+          addLog('&#9881;', d.message, d.step);
+          if (d.step === -1) cleanup();
+        });
+        eventSource.addEventListener('action', (e) => {
+          const d = JSON.parse(e.data);
+          addLog('&#129302;', `<div class="log-thought">"${d.thought}"</div><div class="log-action">Action: <strong>${d.action}</strong> ${formatParams(d.params)}</div>`, d.step);
+        });
+        eventSource.addEventListener('complete', (e) => {
+          const d = JSON.parse(e.data);
+          addLog('&#9989;', `<strong>Task complete:</strong> ${d.summary}`, d.step);
+          cleanup();
+        });
+        eventSource.addEventListener('error', (e) => {
+          try { const d = JSON.parse(e.data); addLog('&#10060;', `Error: ${d.message}`, d.step); } catch (_) {}
+          cleanup();
+        });
+        addLog('&#128640;', `Agent started with task: "${task}"`, 0);
+      } catch (err) { addLog('&#10060;', `Failed to start: ${err.message}`, 0); cleanup(); }
+    }
+    function formatParams(params) {
+      if (!params) return '';
+      const parts = [];
+      for (const [k, v] of Object.entries(params)) {
+        parts.push(k === 'text' && typeof v === 'string' && v.length > 30 ? `${k}="${v.substring(0,30)}..."` : `${k}=${JSON.stringify(v)}`);
+      }
+      return parts.length ? `(${parts.join(', ')})` : '';
+    }
+    function cleanup() {
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      currentSessionId = null;
+      document.getElementById('startBtn').textContent = 'Launch Agent';
+      document.getElementById('startBtn').classList.remove('btn-stop');
+      document.getElementById('statusDot').classList.remove('active');
+      document.getElementById('statusText').textContent = 'Idle';
+    }
+  </script>
+</body>
+</html>

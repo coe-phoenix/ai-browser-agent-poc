@@ -1,0 +1,16 @@
+{
+  "name": "ai-browser-agent-poc",
+  "version": "1.0.0",
+  "description": "AI Browser Agent POC - Autonomous web automation powered by Claude Vision",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "express": "^4.21.0",
+    "puppeteer": "^23.0.0",
+    "dotenv": "^16.4.0",
+    "uuid": "^10.0.0"
+  }
+}
