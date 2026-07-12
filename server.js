@@ -36,6 +36,29 @@ function emit(sessionId, event, data) {
   clients.forEach((c) => c.write(payload));
 }
 
+// Extract text from Anthropic API response (handles different content block types)
+function extractResponseText(response) {
+  if (!response || !response.content || !Array.isArray(response.content)) {
+    console.error('Unexpected response structure:', JSON.stringify(response, null, 2));
+    return null;
+  }
+  // Find the first text block
+  for (const block of response.content) {
+    if (block.type === 'text' && typeof block.text === 'string') {
+      return block.text.trim();
+    }
+  }
+  // Fallback: try to get text from any block that has a text property
+  for (const block of response.content) {
+    if (typeof block.text === 'string') {
+      return block.text.trim();
+    }
+  }
+  // Last resort: stringify the first block
+  console.error('No text block found in response. Content blocks:', JSON.stringify(response.content, null, 2));
+  return null;
+}
+
 const SYSTEM_PROMPT = `You are an AI browser automation agent. You look at screenshots of web pages and decide what action to take next to accomplish the user's goal.
 
 You MUST respond with EXACTLY ONE JSON object (no markdown, no explanation) in this format:
@@ -114,13 +137,20 @@ async function runAgentLoop(sessionId, task, maxSteps = 15) {
         messages,
       });
 
-      const responseText = response.content[0].text.trim();
+      console.log(`[Step ${step}] Response stop_reason: ${response.stop_reason}, content blocks: ${response.content?.length}`);
+
+      const responseText = extractResponseText(response);
+      if (!responseText) {
+        emit(sessionId, 'error', { message: `Empty or unreadable AI response. Stop reason: ${response.stop_reason}. Content types: ${response.content?.map(b => b.type).join(', ')}`, step });
+        break;
+      }
+
       let decision;
       try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         decision = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
       } catch (e) {
-        emit(sessionId, 'error', { message: `Failed to parse AI response: ${responseText}`, step });
+        emit(sessionId, 'error', { message: `Failed to parse AI response: ${responseText.substring(0, 200)}`, step });
         break;
       }
 
