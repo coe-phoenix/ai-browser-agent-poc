@@ -1,0 +1,1 @@
+# AI Browser Agent POC\nAutonomous web automation powered by Claude Vision + Puppeteer
